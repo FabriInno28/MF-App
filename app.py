@@ -5,76 +5,81 @@ import random
 # --- KONFIGURATION & BRANDING ---
 st.set_page_config(page_title="Mobiliar Forum Navigator", layout="wide")
 
-# Custom CSS für den "Mobiliar-Look" (Gelb/Schwarz/Weiss)
+# Custom CSS für den Mobiliar-Look
 st.markdown("""
     <style>
     .main { background-color: #f5f5f5; }
-    .stButton>button { background-color: #FFD700; color: black; border-radius: 5px; }
+    .stButton>button { background-color: #FFD700; color: black; border-radius: 5px; width: 100%; }
+    .stMetric { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
     </style>
     """, unsafe_allow_html=True)
 
 # --- SIDEBAR NAVIGATION ---
 with st.sidebar:
-    st.image("https://www.mobiliar.ch/sites/default/files/logo_mobiliar_default.svg", width=150)
-    st.title("Forum Companion")
-    choice = st.radio("Menü", ["1. KI-Innovation Scan", "2. Mein Dashboard", "3. KI-Coach (Beta)"])
+    st.title("🛡️ Mobiliar Forum")
+    st.subheader("Innovations-Begleiter")
+    choice = st.radio("Menü", ["1. KI-Innovation Scan", "2. Mein Dashboard", "3. KI-Coach"])
+    st.info("Ziel 2030: 25'000 KMU jährlich aktivieren.")
 
-# --- MODUL 1: KI-INNOVATION SCAN ---
+# --- MODUL 1: KI-INNOVATION SCAN (15 MINUTEN) ---
 if choice == "1. KI-Innovation Scan":
-    st.header("🚀 KI-Innovation Scan (15 Min)")
-    st.write("Bereite dein Team auf die 25 Standorte 2026 vor.")
+    st.header("🚀 KI-Innovation Scan")
+    st.write("Identifiziere die Lücken in eurem System und starte die Aktivierung.")
     
-    with st.container():
-        name = st.text_input("Name deines Unternehmens / Vereins")
-        sector = st.selectbox("Branche", ["Gewerbe", "Dienstleistung", "NGO/Verein", "Industrie"])
+    with st.form("scan_form"):
+        name = st.text_input("Name des KMU / Vereins")
+        sector = st.selectbox("Branche", ["Gewerbe", "Dienstleistung", "NGO", "Industrie"])
         st.write("---")
-        st.subheader("Wo steht ihr aktuell?")
-        q1 = st.select_slider("Wie innovationsfreudig ist das Team?", options=["Blockiert", "Abwartend", "Offen", "Pioniere"])
-        q2 = st.text_area("Was ist eure grösste Hürde (z.B. Zeit, Budget, Mindset)?")
+        st.subheader("Selbsteinschätzung")
+        q1 = st.select_slider("Wie bereit ist das Team für Veränderung?", 
+                              options=["Blockiert", "Abwartend", "Bereit", "Vollgas"])
+        q2 = st.text_area("Was ist eure grösste Hürde beim Starten?")
         
-        if st.button("Analyse generieren"):
+        if st.form_submit_button("KI-Analyse erstellen"):
             st.session_state['scan_done'] = True
             st.session_state['name'] = name
             st.session_state['sector'] = sector
-            st.balloons()
-            st.success("KI-Einschätzung erstellt! Gehe jetzt zu 'Mein Dashboard'.")
+            st.session_state['q1'] = q1
+            st.success("Analyse abgeschlossen! Wechseln Sie zum 'Dashboard'.")
 
 # --- MODUL 2: INDIVIDUELLES DASHBOARD ---
 elif choice == "2. Mein Dashboard":
     if 'scan_done' not in st.session_state:
-        st.warning("Bitte führe zuerst den KI-Innovation Scan durch!")
+        st.warning("Bitte führen Sie zuerst den KI-Innovation Scan durch.")
     else:
         st.header(f"📊 Dashboard: {st.session_state['name']}")
         
+        # Kennzahlen aus der Analyse
         col1, col2, col3 = st.columns(3)
-        col1.metric("Aktivierungs-Level", "Bereit für Tag 1", "Stark")
-        col2.metric("Resilienz-Score", "74%", "+5%")
-        col3.metric("Format", "2,5 Tage", "Empfohlen")
+        with col1:
+            st.metric("Aktivierungs-Status", st.session_state['q1'])
+        with col2:
+            st.metric("NPS Benchmark", "82", "Top-Wert")
+        with col3:
+            st.metric("Zufriedenheits-Ziel", "98.8%")
 
-        st.subheader("Deine massgeschneiderte Roadmap 2026")
+        st.subheader("Eure massgeschneiderte Entwicklung")
         
-        # Dynamische Empfehlung basierend auf dem Scan
+        # Das System-Angebot abbilden
         roadmap = {
-            "Phase": ["Einstieg (Kaffee)", "Aktivierung (Workshop)", "Stabilisierung (Follow-up)"],
-            "Status": ["Erledigt ✅", "In Planung 🗓️", "Ausstehend ⏳"],
-            "Fokus": ["Bedarfsanalyse", "Prototyping & Design Thinking", "Resilienz & Stress-Check"]
+            "Phase": ["Einstieg: KMU Kaffee", "Aktivierung: Tagesworkshop", "Vertiefung: 2,5-Tage", "Stabilisierung"],
+            "Inhalt": ["Bedarf klären", "Erste Ideen", "Zukunft gestalten", "Resilienz & Stress"],
+            "Status": ["✅ Erledigt", "⏳ Nächster Schritt", "⚪ Geplant", "⚪ Geplant"]
         }
         st.table(pd.DataFrame(roadmap))
         
-        st.info(f"**KI-Tipp für {st.session_state['sector']}:** Euer Fokus sollte auf 'schlanken Prozessen' liegen. Nutzt den Standort in eurer Nähe für den 2,5-Tage-Workshop.")
+        st.info(f"**KI-Empfehlung:** Da ihr im Bereich '{st.session_state['sector']}' tätig seid, liegt euer Fokus auf der 'Stabilisierung'.")
 
 # --- MODUL 3: KI-COACH ---
-elif choice == "3. KI-Coach (Beta)":
-    st.header("🤖 Dein KI-Innovations-Coach")
-    st.write("Stell eine Frage zu eurer Transformation oder dem Mobiliar Forum.")
+elif choice == "3. KI-Coach":
+    st.header("🤖 KI-Coach für KMU-Teams")
+    st.write("Fragen zur Transformation oder Resilienz?")
     
-    user_input = st.text_input("Deine Frage (z.B. Wie motiviere ich mein Team für Innovation?)")
-    if user_input:
-        # Simulierter KI-Response (Hier käme später die API-Anbindung an GPT-4 oder Gemini)
+    user_q = st.text_input("Deine Frage an den Coach:")
+    if user_q:
         responses = [
-            "Innovation startet bei der psychologischen Sicherheit. Im Mobiliar Forum schaffen wir diesen Raum.",
-            "Versuch es mit kleinen Prototypen. 'Fail fast' ist unser Motto im 2,5-Tage Workshop.",
-            "Für euer Gewerbe ist es wichtig, die Kunden direkt in den Prozess einzubeziehen."
+            "Das Mobiliar Forum hilft euch, die Lücke zwischen Idee und Umsetzung zu schliessen.",
+            "Innovation braucht psychologische Sicherheit. Startet mit einem KMU Kaffee.",
+            "Resilienz ist der Schlüssel zum langfristigen Erfolg nach dem Workshop."
         ]
         st.chat_message("assistant").write(random.choice(responses))
-
