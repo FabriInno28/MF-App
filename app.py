@@ -1,93 +1,190 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
-import random
 
-# --- KONFIGURATION & BRANDING ---
-st.set_page_config(page_title="Mobiliar Forum - Innovation OS", layout="wide")
+st.set_page_config(page_title="Mobiliar Forum Navigator", layout="wide")
 
-# Custom CSS für den Mobiliar-Look
-st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stButton>button { background-color: #FFD700; color: black; border-radius: 5px; width: 100%; font-weight: bold; }
-    .status-card { background-color: white; padding: 20px; border-radius: 10px; border-left: 5px solid #FFD700; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    </style>
-    """, unsafe_allow_html=True)
+DIMENSIONS = {
+    "orientierung": "Orientierung und Zukunftsbild",
+    "entscheidungen": "Entscheidungskraft",
+    "zusammenarbeit": "Zusammenarbeit und Vertrauen",
+    "kundenfokus": "Kunden und Markt",
+    "lernkultur": "Lern und Fehlerkultur",
+    "umsetzung": "Umsetzungsdisziplin",
+    "ki_wandel": "KI und Technologieoffenheit"
+}
 
-# --- SIDEBAR NAVIGATION ---
-with st.sidebar:
-    st.title("🛡️ Mobiliar Forum")
-    st.subheader("Innovation OS")
-    mode = st.radio("Bereich wählen", ["Deep-Dive Scan", "Management Dashboard", "Stabilisierungs-Coach"])
-    st.write("---")
-    st.info("Ziel 2030: 25'000 KMU jährlich aktivieren.")
+QUESTIONS = {
+    "orientierung": [
+        "Wir haben ein klares Bild, welche Themen für unsere Zukunft wirklich entscheidend sind.",
+        "Bei Unsicherheit wissen wir, worauf wir uns zuerst fokussieren.",
+        "Unsere Mitarbeitenden verstehen, wohin sich das Unternehmen entwickeln soll."
+    ],
+    "entscheidungen": [
+        "Wichtige Entscheidungen werden rechtzeitig getroffen.",
+        "Unklare Zuständigkeiten bremsen uns selten.",
+        "Wir vertagen Entscheidungen nicht systematisch."
+    ],
+    "zusammenarbeit": [
+        "In schwierigen Situationen sprechen wir Probleme offen an.",
+        "Zwischen Teams funktioniert die Zusammenarbeit gut.",
+        "Vertrauen ist bei uns höher als Absicherung."
+    ],
+    "kundenfokus": [
+        "Wir verstehen, was unsere Kundinnen und Kunden aktuell wirklich bewegt.",
+        "Wir testen neue Ideen nahe am Markt.",
+        "Kundenfeedback fliesst sichtbar in Entscheidungen ein."
+    ],
+    "lernkultur": [
+        "Fehler dürfen bei uns besprochen werden, ohne dass sofort Schuld gesucht wird.",
+        "Wir reflektieren systematisch, was funktioniert und was nicht.",
+        "Lernen ist Teil des Alltags und nicht nur Theorie."
+    ],
+    "umsetzung": [
+        "Wir bringen Vorhaben konsequent in die Umsetzung.",
+        "Zwischen Idee und erstem Test vergeht nicht zu viel Zeit.",
+        "Wir setzen bewusst Prioritäten statt alles gleichzeitig zu wollen."
+    ],
+    "ki_wandel": [
+        "Wir sehen KI und technologische Veränderungen eher als Chance.",
+        "Wir diskutieren aktiv, wie neue Technologien uns nützen können.",
+        "Wir probieren neue Werkzeuge pragmatisch aus."
+    ]
+}
 
-# --- 1. KOMPLEXER SCAN ---
-if mode == "Deep-Dive Scan":
-    st.header("🔍 Strategischer Innovations-Scan")
-    st.write("Diese 15-minütige KI-Einschätzung analysiert die Potenziale Ihres Teams.")
-    
-    with st.form("complex_scan"):
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("Unternehmen", placeholder="Muster KMU AG")
-            industry = st.selectbox("Sektor", ["Gewerbe", "Dienstleistung", "Industrie", "NGO"])
-        with col2:
-            role = st.selectbox("Ihre Rolle", ["Geschäftsleitung", "Teamleitung", "Mitarbeiter"])
-            size = st.select_slider("Teamgrösse", options=["1-5", "6-15", "16-50", "50+"])
+def init_state():
+    if "answers" not in st.session_state:
+        st.session_state.answers = {}
+    if "profile" not in st.session_state:
+        st.session_state.profile = {}
 
-        st.write("---")
-        st.subheader("Analyse-Dimensionen")
-        c1 = st.slider("Fehlerkultur (0=Angst, 10=Lernen)", 0, 10, 5)
-        c2 = st.slider("Entscheidungs-Speed (0=Langsam, 10=Agil)", 0, 10, 5)
-        c3 = st.select_slider("Einstellung zu KI & Wandel", options=["Abwehr", "Skepsis", "Neugier", "Offenheit"])
-        
-        if st.form_submit_button("KI-Analyse starten"):
-            st.session_state['data'] = {"name": name, "c1": c1, "c2": c2, "industry": industry, "c3": c3}
-            st.success("Analyse abgeschlossen! Wechseln Sie zum Dashboard.")
+def compute_scores(answers):
+    scores = {}
+    for dim, vals in answers.items():
+        if vals:
+            scores[dim] = round(sum(vals) / len(vals) * 20, 1)  # 1-5 -> 20-100
+        else:
+            scores[dim] = 0
+    return scores
 
-# --- 2. MANAGEMENT DASHBOARD ---
-elif mode == "Management Dashboard":
-    if 'data' not in st.session_state:
-        st.warning("Bitte führen Sie zuerst den Scan durch.")
+def classify_level(score):
+    if score < 45:
+        return "kritisch"
+    elif score < 65:
+        return "fragil"
+    elif score < 80:
+        return "solide"
+    return "stark"
+
+def detect_patterns(scores):
+    patterns = []
+
+    if scores["orientierung"] < 60 and scores["entscheidungen"] < 60:
+        patterns.append("Orientierung fehlt und Entscheidungen werden zu lange hinausgezögert.")
+    if scores["lernkultur"] >= 70 and scores["umsetzung"] < 60:
+        patterns.append("Reflexion ist vorhanden, aber die Umsetzungskraft bleibt dahinter zurück.")
+    if scores["ki_wandel"] >= 70 and scores["orientierung"] < 60:
+        patterns.append("Offenheit für Technologie ist da, aber ohne klares Zukunftsbild.")
+    if scores["zusammenarbeit"] < 55:
+        patterns.append("Zusammenarbeit und Vertrauen sind aktuell ein Engpass.")
+    if not patterns:
+        patterns.append("Kein akuter Strukturbruch erkennbar. Fokus auf gezielte Weiterentwicklung.")
+    return patterns
+
+def recommend_format(scores):
+    avg = sum(scores.values()) / len(scores)
+
+    if scores["orientierung"] < 55:
+        return {
+            "format": "Tagesworkshop Orientierung schaffen",
+            "reason": "Das Team braucht zuerst Klarheit, Fokus und gemeinsame Sprache."
+        }
+    if scores["umsetzung"] < 55 and scores["entscheidungen"] < 60:
+        return {
+            "format": "Tagesworkshop Veränderung begleiten",
+            "reason": "Der Engpass liegt weniger bei Ideen als bei Umsetzung und Entscheidungsfähigkeit."
+        }
+    if avg >= 70 and scores["ki_wandel"] >= 70:
+        return {
+            "format": "2,5 Tage Zukunft gestalten",
+            "reason": "Es ist genug Offenheit und Reife da, um tiefer an Zukunftsbildern und Lösungen zu arbeiten."
+        }
+    return {
+        "format": "Tagesworkshop Ideen entwickeln",
+        "reason": "Es gibt Entwicklungspotenzial, aber auch genug Basis, um aus konkreten Themen Lösungen zu bauen."
+    }
+
+init_state()
+
+st.title("Mobiliar Forum Navigator")
+page = st.sidebar.radio("Bereich", ["Scan", "Dashboard"])
+
+if page == "Scan":
+    st.subheader("Strategischer Scan")
+
+    with st.form("scan_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            st.session_state.profile["unternehmen"] = st.text_input("Unternehmen")
+            st.session_state.profile["sektor"] = st.selectbox("Sektor", ["Gewerbe", "Dienstleistung", "Industrie", "NGO"])
+        with c2:
+            st.session_state.profile["rolle"] = st.selectbox("Rolle", ["Geschäftsleitung", "Teamleitung", "Mitarbeitende"])
+            st.session_state.profile["teamgroesse"] = st.selectbox("Teamgrösse", ["1-5", "6-15", "16-50", "50+"])
+
+        st.write("### Einschätzung")
+        for dim, label in DIMENSIONS.items():
+            st.markdown(f"**{label}**")
+            dim_answers = []
+            for q in QUESTIONS[dim]:
+                val = st.slider(q, 1, 5, 3, key=f"{dim}_{q}")
+                dim_answers.append(val)
+            st.session_state.answers[dim] = dim_answers
+            st.write("")
+
+        submitted = st.form_submit_button("Analyse berechnen")
+
+    if submitted:
+        st.success("Analyse berechnet. Wechseln Sie ins Dashboard.")
+
+elif page == "Dashboard":
+    if not st.session_state.answers:
+        st.warning("Bitte zuerst den Scan ausfüllen.")
     else:
-        d = st.session_state['data']
-        st.header(f"📊 Cockpit: {d['name']}")
-        
-        # [span_0](start_span)Kennzahlen aus der C-Level Analyse[span_0](end_span)
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Kultur-Index", f"{d['c1']*10}%")
-        m2.metric("Agilitäts-Score", f"{d['c2']*10}%")
-        m3.metric("NPS Benchmark", "82")
-        m4.metric("Zufriedenheits-Ziel", "98.8%")
+        scores = compute_scores(st.session_state.answers)
+        patterns = detect_patterns(scores)
+        recommendation = recommend_format(scores)
 
-        st.write("---")
-        col_left, col_right = st.columns([2, 1])
-        
-        with col_left:
-            st.subheader("Innovations-Profil")
-            radar_df = pd.DataFrame(dict(
-                r=[d['c1'], d['c2'], 7, 6, 8],
-                theta=['Kultur','Speed','Technologie','Team','Vision']))
-            fig = px.line_polar(radar_df, r='r', theta='theta', line_close=True, range_r=[0,10])
+        st.subheader(f"Cockpit: {st.session_state.profile.get('unternehmen', 'Unternehmen')}")
+
+        m1, m2, m3, m4 = st.columns(4)
+        avg_score = round(sum(scores.values()) / len(scores), 1)
+        critical_count = sum(1 for s in scores.values() if s < 55)
+
+        m1.metric("Gesamtindex", f"{avg_score}")
+        m2.metric("Kritische Felder", critical_count)
+        m3.metric("Passendes Format", recommendation["format"])
+        m4.metric("Nächster Fokus", min(scores, key=scores.get))
+
+        df = pd.DataFrame({
+            "Dimension": [DIMENSIONS[k] for k in scores.keys()],
+            "Score": list(scores.values())
+        })
+
+        c1, c2 = st.columns([2, 1])
+
+        with c1:
+            fig = px.bar(df, x="Dimension", y="Score", range_y=[0, 100], text="Score")
             st.plotly_chart(fig, use_container_width=True)
 
-        with col_right:
-            st.subheader("Status & Empfehlung")
-            st.markdown(f"""
-                <div class="status-card">
-                    <strong>Format:</strong> 2,5-Tage Workshop<br>
-                    <strong>Fokus:</strong> Zukunft gestalten<br><br>
-                    <em>Empfehlung basierend auf Sektor {d['industry']}.</em>
-                </div>
-            """, unsafe_allow_html=True)
+        with c2:
+            st.markdown("### Management Einordnung")
+            for p in patterns:
+                st.write(f"• {p}")
 
-# --- 3. COACH ---
-elif mode == "Stabilisierungs-Coach":
-    st.header("🤖 Stabilisierungs-Coach")
-    st.write("Sicherung der langfristigen Wirkung nach dem Workshop.")
-    st.text_input("Frage zur Team-Resilienz:")
-    if st.button("Antwort generieren"):
-        st.info("Innovation braucht Ausdauer. Fokus auf kleine Siege (Quick Wins) legen.")
+            st.markdown("### Empfehlung")
+            st.info(f"**{recommendation['format']}**\n\n{recommendation['reason']}")
+
+            st.markdown("### Quick Wins")
+            st.write("• Ein Zukunftsthema bewusst priorisieren")
+            st.write("• Eine vertagte Entscheidung klären")
+            st.write("• Ein kleines Experiment innert 14 Tagen starten")
