@@ -1,85 +1,110 @@
 import streamlit as st
 import pandas as pd
-import random
+import numpy as np
+import plotly.express as px # Für professionelle Diagramme
 
-# --- KONFIGURATION & BRANDING ---
-st.set_page_config(page_title="Mobiliar Forum Navigator", layout="wide")
+# --- KONFIGURATION ---
+st.set_page_config(page_title="Mobiliar Forum - Strategy Suite", layout="wide")
 
-# Custom CSS für den Mobiliar-Look
+# --- STYLE ---
 st.markdown("""
     <style>
-    .main { background-color: #f5f5f5; }
-    .stButton>button { background-color: #FFD700; color: black; border-radius: 5px; width: 100%; }
-    .stMetric { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
+    .main { background-color: #f8f9fa; }
+    .stProgress > div > div > div > div { background-color: #FFD700; }
+    .status-card { background-color: white; padding: 20px; border-radius: 10px; border-left: 5px solid #FFD700; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR NAVIGATION ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.title("🛡️ Mobiliar Forum")
-    st.subheader("Innovations-Begleiter")
-    choice = st.radio("Menü", ["1. KI-Innovation Scan", "2. Mein Dashboard", "3. KI-Coach"])
-    st.info("Ziel 2030: 25'000 KMU jährlich aktivieren.")
+    st.image("https://www.mobiliar.ch/sites/default/files/logo_mobiliar_default.svg", width=120)
+    st.title("Innovation OS")
+    mode = st.radio("Bereich wählen", ["Deep-Dive Scan", "Management Dashboard", "Stabilisierungs-Coach"])
+    st.write("---")
+    st.caption("Status: Skalierungs-Modus 2030 aktiv")
 
-# --- MODUL 1: KI-INNOVATION SCAN (15 MINUTEN) ---
-if choice == "1. KI-Innovation Scan":
-    st.header("🚀 KI-Innovation Scan")
-    st.write("Identifiziere die Lücken in eurem System und starte die Aktivierung.")
+# --- 1. KOMPLEXERE BEFRAGUNG (DEEP-DIVE SCAN) ---
+if mode == "Deep-Dive Scan":
+    st.header("🔍 Strategischer Innovations-Scan")
+    st.write("Diese 15-minütige KI-Einschätzung analysiert die verborgenen Blockaden in Ihrem Team.")
     
-    with st.form("scan_form"):
-        name = st.text_input("Name des KMU / Vereins")
-        sector = st.selectbox("Branche", ["Gewerbe", "Dienstleistung", "NGO", "Industrie"])
-        st.write("---")
-        st.subheader("Selbsteinschätzung")
-        q1 = st.select_slider("Wie bereit ist das Team für Veränderung?", 
-                              options=["Blockiert", "Abwartend", "Bereit", "Vollgas"])
-        q2 = st.text_area("Was ist eure grösste Hürde beim Starten?")
-        
-        if st.form_submit_button("KI-Analyse erstellen"):
-            st.session_state['scan_done'] = True
-            st.session_state['name'] = name
-            st.session_state['sector'] = sector
-            st.session_state['q1'] = q1
-            st.success("Analyse abgeschlossen! Wechseln Sie zum 'Dashboard'.")
-
-# --- MODUL 2: INDIVIDUELLES DASHBOARD ---
-elif choice == "2. Mein Dashboard":
-    if 'scan_done' not in st.session_state:
-        st.warning("Bitte führen Sie zuerst den KI-Innovation Scan durch.")
-    else:
-        st.header(f"📊 Dashboard: {st.session_state['name']}")
-        
-        # Kennzahlen aus der Analyse
-        col1, col2, col3 = st.columns(3)
+    with st.form("complex_scan"):
+        col1, col2 = st.columns(2)
         with col1:
-            st.metric("Aktivierungs-Status", st.session_state['q1'])
+            name = st.text_input("Unternehmen", placeholder="Muster KMU AG")
+            role = st.selectbox("Ihre Rolle", ["Inhaber/GF", "Teamleitung", "Mitarbeiter", "HR"])
         with col2:
-            st.metric("NPS Benchmark", "82", "Top-Wert")
-        with col3:
-            st.metric("Zufriedenheits-Ziel", "98.8%")
+            industry = st.selectbox("Sektor", ["Gewerbe/Handwerk", "Hightech/IT", "Dienstleistung", "NGO/Verein"])
+            size = st.select_slider("Teamgrösse", options=["1-5", "6-15", "16-50", "50+"])
 
-        st.subheader("Eure massgeschneiderte Entwicklung")
+        st.write("---")
+        st.subheader("Dimension 1: Innovations-Kultur")
+        c1 = st.slider("Wie gehen Sie mit Fehlern um?", 0, 10, 5, help="0 = Bestrafung, 10 = Lernchance")
+        c2 = st.slider("Entscheidungswege", 0, 10, 5, help="0 = Top-Down, 10 = Demokratisch")
         
-        # Das System-Angebot abbilden
-        roadmap = {
-            "Phase": ["Einstieg: KMU Kaffee", "Aktivierung: Tagesworkshop", "Vertiefung: 2,5-Tage", "Stabilisierung"],
-            "Inhalt": ["Bedarf klären", "Erste Ideen", "Zukunft gestalten", "Resilienz & Stress"],
-            "Status": ["✅ Erledigt", "⏳ Nächster Schritt", "⚪ Geplant", "⚪ Geplant"]
-        }
-        st.table(pd.DataFrame(roadmap))
+        st.subheader("Dimension 2: Zukunfts-Angst vs. Mut")
+        c3 = st.select_slider("Einstellung zu KI & Disruption", options=["Abwehr", "Skepsis", "Neugier", "Offenheit"])
         
-        st.info(f"**KI-Empfehlung:** Da ihr im Bereich '{st.session_state['sector']}' tätig seid, liegt euer Fokus auf der 'Stabilisierung'.")
+        st.subheader("Dimension 3: Der 'Elefant im Raum'")
+        c4 = st.text_area("Was ist das grösste Hindernis, über das in Meetings niemand offen spricht?")
+        
+        if st.form_submit_button("KI-Tiefenanalyse starten"):
+            st.session_state['data'] = {"name": name, "c1": c1, "c2": c2, "industry": industry, "size": size, "c3": c3}
+            st.success("Analyse abgeschlossen. Ergebnisse im Dashboard verfügbar.")
 
-# --- MODUL 3: KI-COACH ---
-elif choice == "3. KI-Coach":
-    st.header("🤖 KI-Coach für KMU-Teams")
-    st.write("Fragen zur Transformation oder Resilienz?")
+# --- 2. ERWEITERTES DASHBOARD ---
+elif mode == "Management Dashboard":
+    if 'data' not in st.session_state:
+        st.warning("Bitte führen Sie zuerst den Deep-Dive Scan durch.")
+    else:
+        d = st.session_state['data']
+        st.header(f"📊 Innovations-Cockpit: {d['name']}")
+        
+        # Obere Kennzahlen (Metrics)
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Kultur-Score", f"{d['c1']*10}%", "+2%")
+        m2.metric("Agilitäts-Index", f"{d['c2']*10}%", "-1%")
+        [span_1](start_span)m3.metric("NPS Potential", "82", "Benchmark") # Basierend auf C-Level Doc[span_1](end_span)
+        [span_2](start_span)m4.metric("Zufriedenheits-Prognose", "98.8%") # Basierend auf C-Level Doc[span_2](end_span)
+
+        st.write("---")
+        
+        # Grafische Darstellung
+        col_left, col_right = st.columns([2, 1])
+        
+        with col_left:
+            st.subheader("Innovations-Profil (Radar-Vorschau)")
+            # Dummy-Radar-Daten
+            radar_df = pd.DataFrame(dict(
+                r=[d['c1'], d['c2'], 7, 5, 8],
+                theta=['Fehlerkultur','Entscheidung','Technologie','Speed','Team-Spirit']))
+            fig = px.line_polar(radar_df, r='r', theta='theta', line_close=True, range_r=[0,10])
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_right:
+            st.subheader("Nächste Schritte")
+            st.markdown(f"""
+            <div class="status-card">
+                <strong>Empfohlenes Format:</strong><br>
+                2,5-Tage "Zukunft gestalten"<br><br>
+                <strong>Fokus-Thema:</strong><br>
+                Psychologische Sicherheit & Prototyping
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.write("---")
+        st.subheader("Der Weg zur Aktivierung (System-Angebot)")
+        # [span_3](start_span)Roadmap-Visualisierung basierend auf Angebotssystem[span_3](end_span)
+        steps = ["KMU Kaffee", "Tagesworkshop", "2,5-Tage Workshop", "Stabilisierung"]
+        current_step = 2 # Beispielhaft
+        st.step_prog = st.select_slider("Aktueller Status im Mobiliar-System", options=steps, value=steps[current_step])
+        st.progress((current_step + 1) * 25)
+
+# --- 3. STABILISIERUNGS-COACH ---
+elif mode == "Stabilisierungs-Coach":
+    st.header("🧘 Resilienz & Stabilisierungs-Begleiter")
+    st.write("Innovation ist anstrengend. Wir begleiten Ihr Team auch nach dem Workshop.")
+    st.info("Dieses Modul sichert die langfristige Wirkung und senkt das Stresslevel.")
     
-    user_q = st.text_input("Deine Frage an den Coach:")
-    if user_q:
-        responses = [
-            "Das Mobiliar Forum hilft euch, die Lücke zwischen Idee und Umsetzung zu schliessen.",
-            "Innovation braucht psychologische Sicherheit. Startet mit einem KMU Kaffee.",
-            "Resilienz ist der Schlüssel zum langfristigen Erfolg nach dem Workshop."
-        ]
-        st.chat_message("assistant").write(random.choice(responses))
+    st.text_input("Kurze Frage zum Team-Zustand?")
+    st.button("KI-Ratgeber kontaktieren")
