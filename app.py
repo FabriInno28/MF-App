@@ -4,193 +4,198 @@ import plotly.express as px
 
 st.set_page_config(page_title="Mobiliar Forum Navigator", layout="wide")
 
-# ---------- INIT ----------
+# ---------------- INIT ----------------
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
-
-if "profile" not in st.session_state:
-    st.session_state.profile = {}
 
 if "answers" not in st.session_state:
     st.session_state.answers = {}
 
-# ---------- CONFIG ----------
+if "focus" not in st.session_state:
+    st.session_state.focus = ""
+
+if "action" not in st.session_state:
+    st.session_state.action = ""
+
+if "owner" not in st.session_state:
+    st.session_state.owner = ""
+
+if "deadline" not in st.session_state:
+    st.session_state.deadline = ""
+
+# ---------------- DIMENSIONEN ----------------
 DIMENSIONS = {
-    "orientierung": {
-        "label": "Orientierung",
-        "questions": [
-            "Wir haben ein klares Bild, wohin wir uns entwickeln wollen.",
-            "Wir priorisieren Zukunftsthemen bewusst.",
-            "Unklarheit führt bei uns selten zu Stillstand."
-        ]
-    },
-    "entscheidung": {
-        "label": "Entscheidungskraft",
-        "questions": [
-            "Wichtige Entscheidungen werden rechtzeitig gefällt.",
-            "Zuständigkeiten sind klar genug.",
-            "Wir vertagen unangenehme Themen nicht systematisch."
-        ]
-    },
-    "umsetzung": {
-        "label": "Umsetzung",
-        "questions": [
-            "Wir bringen Vorhaben konsequent in die Umsetzung.",
-            "Zwischen Idee und Test vergeht wenig Zeit.",
-            "Wir setzen bewusst Prioritäten."
-        ]
-    },
-    "kultur": {
-        "label": "Kultur",
-        "questions": [
-            "Probleme können offen angesprochen werden.",
-            "Fehler führen eher zu Lernen als zu Schuld.",
-            "Vertrauen ist stärker als Absicherung."
-        ]
-    },
-    "ki": {
-        "label": "KI und Wandel",
-        "questions": [
-            "Wir diskutieren konkrete KI Anwendungen.",
-            "Wir erkennen, wo KI echten Nutzen bringen könnte.",
-            "Wir probieren neue Werkzeuge pragmatisch aus."
-        ]
-    }
+    "orientierung": [
+        "Wir haben ein klares Bild, wohin wir uns entwickeln wollen.",
+        "Wir priorisieren bewusst, was jetzt wirklich wichtig ist."
+    ],
+    "entscheidung": [
+        "Wichtige Entscheidungen werden rechtzeitig getroffen.",
+        "Wir schieben schwierige Themen nicht systematisch vor uns her."
+    ],
+    "umsetzung": [
+        "Wir bringen Dinge konsequent in die Umsetzung.",
+        "Zwischen Idee und erstem Schritt vergeht wenig Zeit."
+    ],
+    "kultur": [
+        "Probleme können offen angesprochen werden.",
+        "Vertrauen ist stärker als Absicherung."
+    ],
+    "ki": [
+        "Wir sehen konkrete Möglichkeiten, wie KI uns helfen kann.",
+        "Wir probieren neue Tools pragmatisch aus."
+    ]
 }
 
-def compute_scores(answers: dict) -> dict:
-    scores = {}
-    for dim, vals in answers.items():
-        if vals:
-            scores[dim] = round(sum(vals) / len(vals) * 20, 1)  # 1-5 -> 20-100
-        else:
-            scores[dim] = 0.0
-    return scores
+# ---------------- LOGIK ----------------
+def compute_scores(answers):
+    return {k: round(sum(v)/len(v)*20,1) for k,v in answers.items()}
 
-def detect_patterns(scores: dict) -> list[str]:
-    patterns = []
+def detect_pattern(scores):
+    if scores["orientierung"] < 55 and scores["entscheidung"] < 55:
+        return "Reaktionsmodus"
+    if scores["kultur"] > 70 and scores["umsetzung"] < 55:
+        return "Reflexionsfalle"
+    if scores["ki"] > 70 and scores["orientierung"] < 60:
+        return "Technologie ohne Richtung"
+    if scores["umsetzung"] < 55:
+        return "Umsetzungsproblem"
+    return "Stabile Basis"
 
-    if scores.get("orientierung", 0) < 55 and scores.get("entscheidung", 0) < 55:
-        patterns.append("Viel Unsicherheit, wenig Klarheit in den Entscheidungen.")
-    if scores.get("kultur", 0) >= 70 and scores.get("umsetzung", 0) < 55:
-        patterns.append("Es wird reflektiert, aber zu wenig konsequent umgesetzt.")
-    if scores.get("ki", 0) >= 70 and scores.get("orientierung", 0) < 55:
-        patterns.append("Interesse an KI ist da, aber ohne klares Zukunftsbild.")
-    if scores.get("kultur", 0) < 55:
-        patterns.append("Zusammenarbeit und Vertrauen sind ein möglicher Engpass.")
+def get_path(pattern):
+    return {
+        "Reaktionsmodus": {
+            "text": "Ihr seid stark im Einsatz. Aber es fehlt Klarheit, worauf ihr euch fokussiert.",
+            "focus": "Eine Entscheidung treffen",
+            "exercise": [
+                "Jeder bringt 3 Themen mit",
+                "Team reduziert auf 1 Thema",
+                "Entscheidung treffen: jetzt / später / nicht"
+            ],
+            "commitment": "In 14 Tagen ist eine Entscheidung umgesetzt"
+        },
+        "Reflexionsfalle": {
+            "text": "Ihr reflektiert gut. Aber kommt zu wenig ins Tun.",
+            "focus": "Vom Denken ins Handeln",
+            "exercise": [
+                "Ein Thema auswählen",
+                "Ersten Schritt definieren",
+                "Verantwortung festlegen"
+            ],
+            "commitment": "Ein erster Schritt wurde umgesetzt"
+        },
+        "Technologie ohne Richtung": {
+            "text": "Interesse an KI ist da. Aber ohne klaren Nutzen.",
+            "focus": "Ein konkreter Use Case",
+            "exercise": [
+                "3 Ideen sammeln",
+                "1 auswählen",
+                "kleinen Test starten"
+            ],
+            "commitment": "Ein KI-Test wurde gestartet"
+        },
+        "Umsetzungsproblem": {
+            "text": "Es gibt Ideen. Aber zu wenig Umsetzung.",
+            "focus": "Verbindlichkeit erhöhen",
+            "exercise": [
+                "Ein Projekt auswählen",
+                "Deadline setzen",
+                "Checkpoints definieren"
+            ],
+            "commitment": "Ein Projekt wurde konsequent gestartet"
+        },
+        "Stabile Basis": {
+            "text": "Gute Basis. Jetzt geht es um gezielte Weiterentwicklung.",
+            "focus": "Ein Zukunftsthema vorantreiben",
+            "exercise": [
+                "Ein Thema definieren",
+                "Ideen sammeln",
+                "erste Tests starten"
+            ],
+            "commitment": "Ein Thema wurde aktiv gestartet"
+        }
+    }[pattern]
 
-    if not patterns:
-        patterns.append("Kein akuter Strukturbruch sichtbar. Fokus auf gezielte Weiterentwicklung.")
+# ---------------- NAV ----------------
+page = st.sidebar.radio("Bereich", ["Befragung", "Dashboard", "Entwicklung", "Aktionsplan"])
 
-    return patterns
-
-def recommend(scores: dict) -> tuple[str, str]:
-    if scores.get("orientierung", 0) < 55:
-        return (
-            "Tagesworkshop Orientierung schaffen",
-            "Zuerst braucht es Fokus, Prioritäten und ein gemeinsames Verständnis der Lage."
-        )
-    if scores.get("umsetzung", 0) < 55:
-        return (
-            "Tagesworkshop Veränderung begleiten",
-            "Der Engpass liegt weniger bei Ideen als bei Verbindlichkeit und Umsetzung."
-        )
-    if scores.get("ki", 0) >= 70 and scores.get("orientierung", 0) >= 60:
-        return (
-            "2.5 Tage Zukunft gestalten",
-            "Es ist genug Offenheit da, um tiefer an Zukunftsbildern und Lösungen zu arbeiten."
-        )
-    return (
-        "Tagesworkshop Ideen entwickeln",
-        "Es gibt genügend Basis, um konkrete Lösungsansätze gemeinsam zu entwickeln."
-    )
-
-# ---------- SIDEBAR ----------
-page = st.sidebar.radio("Bereich", ["Scan", "Dashboard"])
-
-# ---------- PAGE: SCAN ----------
-if page == "Scan":
+# ---------------- BEFRAGUNG ----------------
+if page == "Befragung":
     st.title("Mobiliar Forum Navigator")
-    st.subheader("Strategischer Scan")
 
-    with st.form("scan_form"):
-        c1, c2 = st.columns(2)
+    with st.form("scan"):
+        answers = {}
 
-        with c1:
-            company = st.text_input("Unternehmen", placeholder="Muster KMU AG")
-            sector = st.selectbox("Sektor", ["Gewerbe", "Dienstleistung", "Industrie", "NGO"])
+        for dim, questions in DIMENSIONS.items():
+            st.subheader(dim.capitalize())
+            vals = []
+            for i, q in enumerate(questions):
+                vals.append(st.slider(q, 1, 5, 3, key=f"{dim}_{i}"))
+            answers[dim] = vals
 
-        with c2:
-            role = st.selectbox("Rolle", ["Geschäftsleitung", "Teamleitung", "Mitarbeitende"])
-            size = st.selectbox("Teamgrösse", ["1-5", "6-15", "16-50", "50+"])
-
-        st.write("### Einschätzung")
-
-        local_answers = {}
-
-        for dim, cfg in DIMENSIONS.items():
-            st.markdown(f"**{cfg['label']}**")
-            values = []
-            for i, question in enumerate(cfg["questions"]):
-                key = f"{dim}_{i}"
-                values.append(st.slider(question, 1, 5, 3, key=key))
-            local_answers[dim] = values
-            st.write("")
-
-        submitted = st.form_submit_button("Analyse berechnen")
-
-        if submitted:
-            st.session_state.profile = {
-                "company": company,
-                "sector": sector,
-                "role": role,
-                "size": size,
-            }
-            st.session_state.answers = local_answers
+        if st.form_submit_button("Analyse starten"):
+            st.session_state.answers = answers
             st.session_state.submitted = True
+            st.success("Fertig. Geh ins Dashboard.")
 
-    if st.session_state.submitted:
-        st.success("Analyse berechnet. Wechsle links ins Dashboard.")
+# ---------------- DASHBOARD ----------------
+elif page == "Dashboard":
+    st.title("Eure Situation")
 
-# ---------- PAGE: DASHBOARD ----------
-if page == "Dashboard":
-    st.title("Management Dashboard")
-
-    if not st.session_state.submitted or not st.session_state.answers:
-        st.warning("Bitte zuerst den Scan ausfüllen.")
+    if not st.session_state.submitted:
+        st.warning("Bitte Befragung ausfüllen")
     else:
         scores = compute_scores(st.session_state.answers)
-        patterns = detect_patterns(scores)
-        rec_title, rec_reason = recommend(scores)
+        pattern = detect_pattern(scores)
 
-        avg_score = round(sum(scores.values()) / len(scores), 1)
-        weakest = min(scores, key=scores.get)
+        avg = round(sum(scores.values())/len(scores),1)
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Gesamtindex", avg_score)
-        m2.metric("Kritische Felder", sum(1 for v in scores.values() if v < 55))
-        m3.metric("Grösster Engpass", DIMENSIONS[weakest]["label"])
+        st.metric("Gesamtbild", avg)
+        st.markdown(f"### Muster: {pattern}")
 
-        df = pd.DataFrame({
-            "Dimension": [DIMENSIONS[k]["label"] for k in scores.keys()],
-            "Score": list(scores.values())
-        })
+        st.info("Das ist euer aktuelles Hauptmuster.")
 
-        fig = px.bar(df, x="Dimension", y="Score", text="Score", range_y=[0, 100])
-        st.plotly_chart(fig, use_container_width=True)
+# ---------------- ENTWICKLUNG ----------------
+elif page == "Entwicklung":
+    st.title("Nächster Schritt")
 
-        left, right = st.columns([2, 1])
+    if not st.session_state.submitted:
+        st.warning("Bitte zuerst Befragung")
+    else:
+        scores = compute_scores(st.session_state.answers)
+        pattern = detect_pattern(scores)
+        path = get_path(pattern)
 
-        with left:
-            st.subheader("Erkannte Muster")
-            for p in patterns:
-                st.write(f"• {p}")
+        st.write(path["text"])
 
-        with right:
-            st.subheader("Empfehlung")
-            st.info(f"**{rec_title}**\n\n{rec_reason}")
+        st.markdown("### 🎯 Fokus")
+        st.write(path["focus"])
 
-            st.subheader("Quick Wins")
-            st.write("• Eine vertagte Entscheidung aktiv klären")
-            st.write("• Ein Zukunftsthema bewusst priorisieren")
-            st.write("• Ein kleines Experiment in 14 Tagen starten")
+        st.markdown("### 🧠 Übung")
+        for s in path["exercise"]:
+            st.write(f"• {s}")
+
+        st.markdown("### 🔁 Commitment")
+        st.write(path["commitment"])
+
+# ---------------- AKTIONSPLAN ----------------
+elif page == "Aktionsplan":
+    st.title("Euer nächster konkreter Schritt")
+
+    if not st.session_state.submitted:
+        st.warning("Bitte zuerst Befragung")
+    else:
+        st.session_state.focus = st.text_input("Unser Fokus")
+        st.session_state.action = st.text_input("Erster Schritt")
+        st.session_state.owner = st.text_input("Verantwortlich")
+        st.session_state.deadline = st.text_input("Bis wann")
+
+        if st.button("Speichern"):
+            st.success("Fixiert. Jetzt geht es ins Tun.")
+
+        if st.session_state.focus:
+            st.markdown("### Eure Vereinbarung")
+            st.write(f"Fokus: {st.session_state.focus}")
+            st.write(f"Schritt: {st.session_state.action}")
+            st.write(f"Verantwortlich: {st.session_state.owner}")
+            st.write(f"Deadline: {st.session_state.deadline}")
