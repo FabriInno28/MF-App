@@ -1,129 +1,185 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="Mobiliar Forum Navigator", layout="wide")
 
-# ---------------- KMU STYLING ----------------
+# ---------------- STYLING ----------------
 st.markdown("""
 <style>
-    .reportview-container { background: #f4f4f4; }
-    .stMetric { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .kmu-card { background: white; padding: 20px; border-radius: 12px; border-top: 5px solid #d6001c; margin-bottom: 20px; }
-    h1, h2, h3 { color: #d6001c; }
+    .main { background-color: #f9f9f9; }
+    .kmu-card { background: white; padding: 25px; border-radius: 12px; border-left: 8px solid #d6001c; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 25px; }
+    .stButton>button { background-color: #d6001c; color: white; border-radius: 6px; height: 3em; font-weight: bold; }
+    h1, h2, h3 { color: #d6001c; font-family: 'Arial Narrow', sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- FRAGEN-LOGIK (KMU SORGENBAROMETER) ----------------
-# Wir fragen nach Symptomen, nicht nach Theorie
+# ---------------- FRAGEN ----------------
 QUESTIONS = {
-    "Personal": "Finden wir aktuell kaum Leute oder verlieren gute Mitarbeiter?",
-    "Zeit": "Frisst das Tagesgeschäft (Papierkrieg) die Zeit für Neues komplett auf?",
-    "Entscheidung": "Bleiben wichtige Entscheide liegen, weil wir uns unsicher sind?",
-    "Kosten": "Machen uns die steigenden Fixkosten (Energie, Miete) schlaflose Nächte?",
-    "Zukunft": "Fehlt uns ein klarer Plan, wo wir in 5 Jahren stehen wollen?"
+    "Markt": "Wie stark spüren Sie Druck durch Konkurrenz oder neue Technologien?",
+    "Personal": "Wie kritisch ist die Situation bei Fachkräften und im Team?",
+    "Prozesse": "Wie sehr bremsen veraltete Abläufe oder IT-Probleme?",
+    "Finanzen": "Wie stark belasten steigende Kosten Ihr Geschäft?",
+    "Strategie": "Wie klar ist Ihre langfristige Ausrichtung?"
 }
 
-# ---------------- PAGE 1: DER REALITÄTS-CHECK ----------------
-if "step" not in st.session_state: st.session_state.step = "Scan"
+# ---------------- ANALYSE ----------------
+def analyze_profile(data, text):
+    text = text.lower()
 
-if st.session_state.step == "Scan":
-    st.title("Der KMU-Realitäts-Check")
-    st.write("Ehrliche Standortbestimmung – dauert 3 Minuten.")
+    dominant = max(data, key=data.get)
 
-    with st.form("kmu_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            company = st.text_input("Firma / Organisation")
-            sector = st.selectbox("Branche", ["Bau/Gewerbe", "Detailhandel", "Dienstleistung", "Gastro/Hotellerie", "Industrie"])
-        with col2:
-            size = st.selectbox("Teamgrösse", ["1-10 (Kleinbetrieb)", "11-50 (KMU)", "50+ (Grossbetrieb)"])
-        
-        st.markdown("---")
-        st.subheader("Wo drückt der Schuh?")
-        st.write("1 = Alles im Griff | 5 = Hier brennt es")
-        
+    # Muster erkennen
+    if data["Strategie"] >= 4 and data["Markt"] >= 4:
+        pattern = "Zukunft ist da, aber nicht klar greifbar."
+        recommendation = "Orientierung schaffen"
+        reason = "Hoher Marktdruck trifft auf fehlende strategische Klarheit."
+    elif data["Personal"] >= 4 and data["Prozesse"] >= 4:
+        pattern = "Das Tagesgeschäft dominiert. Das Team läuft am Limit."
+        recommendation = "Veränderung begleiten"
+        reason = "Operative Belastung blockiert Entwicklung."
+    elif data["Markt"] >= 4 and data["Strategie"] <= 3:
+        pattern = "Chancen sind da, aber sie werden nicht systematisch genutzt."
+        recommendation = "Ideen entwickeln"
+        reason = "Marktdynamik ist hoch, aber Ideen fehlen oder werden nicht priorisiert."
+    else:
+        pattern = "Mehrere Spannungsfelder gleichzeitig."
+        recommendation = "Orientierung schaffen"
+        reason = "Keine klare Priorisierung erkennbar."
+
+    # Text Hinweise
+    if any(w in text for w in ["zeit", "stress", "überlastet"]):
+        pattern += " Zusätzlich zeigt sich ein klarer Ressourcenengpass."
+    if any(w in text for w in ["unklar", "wohin", "ziel"]):
+        pattern += " Die strategische Richtung ist aktuell nicht ausreichend geschärft."
+
+    return dominant, pattern, recommendation, reason
+
+def get_action_plan(format_type):
+    if format_type == "Orientierung schaffen":
+        return [
+            "Die drei grössten Unsicherheiten im Führungsteam offen benennen",
+            "Gemeinsam priorisieren, wo wirklich Handlungsbedarf besteht",
+            "Ein klares Zukunftsthema definieren"
+        ], [
+            "Mit dem Team einen Tag raus aus dem Alltag gehen",
+            "Die wichtigsten Spannungsfelder strukturiert bearbeiten",
+            "Konkrete nächste Schritte festlegen"
+        ]
+    elif format_type == "Ideen entwickeln":
+        return [
+            "Bestehende Ideen sammeln und sichtbar machen",
+            "Kundenperspektive bewusst einnehmen",
+            "1–2 Ideen auswählen und schärfen"
+        ], [
+            "Ideen strukturiert testen",
+            "Erste Prototypen oder Experimente starten",
+            "Verantwortlichkeiten klären"
+        ]
+    else:
+        return [
+            "Die grössten operativen Blockaden sichtbar machen",
+            "Verantwortlichkeiten klären",
+            "Erste Entlastung schaffen"
+        ], [
+            "Arbeitsweise im Team reflektieren",
+            "Klare Prioritäten setzen",
+            "Veränderung aktiv begleiten"
+        ]
+
+# ---------------- NAVIGATION ----------------
+if "page" not in st.session_state:
+    st.session_state.page = "Scan"
+
+# ---------------- PAGE 1 ----------------
+if st.session_state.page == "Scan":
+    st.title("Mobiliar Forum Navigator")
+    st.write("Standortbestimmung für Geschäftsleitungen von KMU.")
+
+    with st.form("scan"):
         results = {}
         for key, q in QUESTIONS.items():
-            results[key] = st.select_slider(q, options=[1, 2, 3, 4, 5], value=3)
-            
-        if st.form_submit_button("Auswertung anzeigen"):
+            results[key] = st.slider(q, 1, 5, 3)
+
+        text = st.text_area("Was hindert Sie aktuell am meisten daran, Ihr Unternehmen weiterzuentwickeln?")
+
+        if st.form_submit_button("Analyse starten"):
             st.session_state.data = results
-            st.session_state.profile = {"company": company, "sector": sector}
-            st.session_state.step = "Dashboard"
+            st.session_state.text = text
+            st.session_state.page = "Dashboard"
             st.rerun()
 
-# ---------------- PAGE 2: DAS UNTERNEHMER-COCKPIT ----------------
-elif st.session_state.step == "Dashboard":
-    st.title(f"Unternehmer-Cockpit: {st.session_state.profile['company']}")
-    
+# ---------------- PAGE 2 ----------------
+elif st.session_state.page == "Dashboard":
+    st.title("Ihre Standortbestimmung")
+
     d = st.session_state.data
-    
-    # RADAR CHART (Der "Strategie-Look")
-    categories = list(QUESTIONS.keys())
-    # Invertieren für Radar (5 = schlecht, also 6-d)
-    values = [6-d[cat] for cat in categories] 
-    
+    text = st.session_state.text
+
+    dominant, pattern, rec, reason = analyze_profile(d, text)
+
+    # RADAR
+    categories = list(d.keys())
+    values = list(d.values())
+
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(
-          r=values,
-          theta=categories,
-          fill='toself',
-          fillcolor='rgba(214, 0, 28, 0.3)',
-          line=dict(color='#d6001c'),
-          name='Ist-Zustand'
+        r=values,
+        theta=categories,
+        fill='toself',
+        line=dict(color='#d6001c')
     ))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 5])), showlegend=False)
-    
-    col_chart, col_metrics = st.columns([1.5, 1])
-    
-    with col_chart:
-        st.plotly_chart(fig, use_container_width=True)
-        
-    with col_metrics:
-        avg_score = sum(d.values()) / len(d)
-        status = "KRITISCH" if avg_score > 3.5 else "STABIL" if avg_score < 2.5 else "GEFORDERT"
-        color = "#d6001c" if status == "KRITISCH" else "#f2b300" if status == "GEFORDERT" else "#27ae60"
-        
-        st.markdown(f"""
-            <div style="background:{color}; color:white; padding:20px; border-radius:10px; text-align:center;">
-                <h2 style="color:white; margin:0;">STATUS: {status}</h2>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        st.metric("Handlungsbedarf", "HOCH" if avg_score > 3 else "MITTEL")
-        st.metric("NPS Forum Benchmark", "82", "Ihr Ziel")
 
-    st.markdown("---")
-    
-    # HANDLUNGSEMPFEHLUNG
-    st.subheader("Nächste Schritte für den Patron")
-    
-    recos = {
-        "Personal": "Mitarbeiter-Befähigung (Workshop Veränderung begleiten)",
-        "Zeit": "Prozess-Entschlackung (Tagesworkshop Ideen entwickeln)",
-        "Entscheidung": "Führungs-Klarheit (Orientierung schaffen)",
-        "Kosten": "Resilienz-Check & Geschäftsmodell-Review",
-        "Zukunft": "Zukunft gestalten (2.5 Tage Intensiv-Workshop)"
-    }
-    
-    # Den grössten Schmerzpunkt finden (höchster Wert)
-    main_pain = max(d, key=d.get)
-    
+    st.plotly_chart(fig, use_container_width=True)
+
+    # SUMMARY
     st.markdown(f"""
-        <div class="kmu-card">
-            <h4>💡 Fokus-Empfehlung</h4>
-            Ihr grösster Engpass liegt aktuell im Bereich <strong>{main_pain}</strong>.<br><br>
-            <strong>Vorschlag:</strong> {recos[main_pain]}<br>
-            Das Ziel: Den Kopf wieder frei bekommen für das Wesentliche.
-        </div>
+    <div class="kmu-card">
+    <h3>Einordnung</h3>
+    <p><strong>Grösster Druck:</strong> {dominant}</p>
+    <p><strong>Muster:</strong> {pattern}</p>
+    </div>
     """, unsafe_allow_html=True)
-    
-    if st.button("Direkt Buchung anfragen"):
-        st.write("Leite weiter zu www.mobiliarforum.ch...")
 
-    if st.button("Zurück zum Scan"):
-        st.session_state.step = "Scan"
+    # EMPFEHLUNG
+    st.markdown(f"""
+    <div class="kmu-card">
+    <h3>Empfohlenes Format</h3>
+    <p><strong>{rec}</strong></p>
+    <p>{reason}</p>
+    <p>Ein Tag im Mobiliar Forum hilft, genau diese Situation strukturiert zu klären und konkrete nächste Schritte zu definieren.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # AKTIONSPLAN
+    short, mid = get_action_plan(rec)
+
+    st.subheader("Nächste Schritte")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("**In den nächsten 14 Tagen**")
+        for s in short:
+            st.write("•", s)
+
+    with col2:
+        st.markdown("**In den nächsten 30 Tagen**")
+        for m in mid:
+            st.write("•", m)
+
+    # RESSOURCEN
+    st.subheader("Impulse")
+
+    if rec == "Orientierung schaffen":
+        st.write("Podcast: Zukunft gestalten in unsicheren Zeiten")
+        st.write("Reflexionsfrage: Woran messen wir in 12 Monaten, ob wir auf dem richtigen Weg sind?")
+    elif rec == "Ideen entwickeln":
+        st.write("Podcast: Von der Idee zur Umsetzung")
+        st.write("Übung: 3 Ideen in 30 Minuten skizzieren")
+    else:
+        st.write("Podcast: Teams unter Druck führen")
+        st.write("Übung: Was stoppen wir sofort?")
+
+    if st.button("Neue Analyse starten"):
+        st.session_state.page = "Scan"
         st.rerun()
